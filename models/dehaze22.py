@@ -35,33 +35,33 @@ def deconv_block(in_dim,out_dim):
 def blockUNet1(in_c, out_c, name, transposed=False, bn=False, relu=True, dropout=False):
   block = nn.Sequential()
   if relu:
-    block.add_module('%s.relu' % name, nn.ReLU(inplace=True))
+    block.add_module('%s_relu' % name, nn.ReLU(inplace=True))
   else:
-    block.add_module('%s.leakyrelu' % name, nn.LeakyReLU(0.2, inplace=True))
+    block.add_module('%s_leakyrelu' % name, nn.LeakyReLU(0.2, inplace=True))
   if not transposed:
-    block.add_module('%s.conv' % name, nn.Conv2d(in_c, out_c, 3, 1, 1, bias=False))
+    block.add_module('%s_conv' % name, nn.Conv2d(in_c, out_c, 3, 1, 1, bias=False))
   else:
-    block.add_module('%s.tconv' % name, nn.ConvTranspose2d(in_c, out_c, 3, 1, 1, bias=False))
+    block.add_module('%s_tconv' % name, nn.ConvTranspose2d(in_c, out_c, 3, 1, 1, bias=False))
   if bn:
-    block.add_module('%s.bn' % name, nn.BatchNorm2d(out_c))
+    block.add_module('%s_bn' % name, nn.BatchNorm2d(out_c))
   if dropout:
-    block.add_module('%s.dropout' % name, nn.Dropout2d(0.5, inplace=True))
+    block.add_module('%s_dropout' % name, nn.Dropout2d(0.5, inplace=True))
   return block
 
 def blockUNet(in_c, out_c, name, transposed=False, bn=False, relu=True, dropout=False):
   block = nn.Sequential()
   if relu:
-    block.add_module('%s.relu' % name, nn.ReLU(inplace=True))
+    block.add_module('%s_relu' % name, nn.ReLU(inplace=True))
   else:
-    block.add_module('%s.leakyrelu' % name, nn.LeakyReLU(0.2, inplace=True))
+    block.add_module('%s_leakyrelu' % name, nn.LeakyReLU(0.2, inplace=True))
   if not transposed:
-    block.add_module('%s.conv' % name, nn.Conv2d(in_c, out_c, 4, 2, 1, bias=False))
+    block.add_module('%s_conv' % name, nn.Conv2d(in_c, out_c, 4, 2, 1, bias=False))
   else:
-    block.add_module('%s.tconv' % name, nn.ConvTranspose2d(in_c, out_c, 4, 2, 1, bias=False))
+    block.add_module('%s_tconv' % name, nn.ConvTranspose2d(in_c, out_c, 4, 2, 1, bias=False))
   if bn:
-    block.add_module('%s.bn' % name, nn.BatchNorm2d(out_c))
+    block.add_module('%s_bn' % name, nn.BatchNorm2d(out_c))
   if dropout:
-    block.add_module('%s.dropout' % name, nn.Dropout2d(0.5, inplace=True))
+    block.add_module('%s_dropout' % name, nn.Dropout2d(0.5, inplace=True))
   return block
 
 
@@ -119,7 +119,7 @@ class D(nn.Module):
     # 256
     layer_idx = 1
     name = 'layer%d' % layer_idx
-    main.add_module('%s.conv' % name, nn.Conv2d(nc, nf, 4, 2, 1, bias=False))
+    main.add_module('%s_conv' % name, nn.Conv2d(nc, nf, 4, 2, 1, bias=False))
 
     # 128
     layer_idx += 1
@@ -136,17 +136,17 @@ class D(nn.Module):
     layer_idx += 1
     name = 'layer%d' % layer_idx
     nf = nf * 2
-    main.add_module('%s.leakyrelu' % name, nn.LeakyReLU(0.2, inplace=True))
-    main.add_module('%s.conv' % name, nn.Conv2d(nf, nf*2, 4, 1, 1, bias=False))
-    main.add_module('%s.bn' % name, nn.BatchNorm2d(nf*2))
+    main.add_module('%s_leakyrelu' % name, nn.LeakyReLU(0.2, inplace=True))
+    main.add_module('%s_conv' % name, nn.Conv2d(nf, nf*2, 4, 1, 1, bias=False))
+    main.add_module('%s_bn' % name, nn.BatchNorm2d(nf*2))
 
     # 31
     layer_idx += 1
     name = 'layer%d' % layer_idx
     nf = nf * 2
-    main.add_module('%s.leakyrelu' % name, nn.LeakyReLU(0.2, inplace=True))
-    main.add_module('%s.conv' % name, nn.Conv2d(nf, 1, 4, 1, 1, bias=False))
-    main.add_module('%s.sigmoid' % name , nn.Sigmoid())
+    main.add_module('%s_leakyrelu' % name, nn.LeakyReLU(0.2, inplace=True))
+    main.add_module('%s_conv' % name, nn.Conv2d(nf, 1, 4, 1, 1, bias=False))
+    main.add_module('%s_sigmoid' % name , nn.Sigmoid())
     # 30 (sizePatchGAN=30)
 
     self.main = main
@@ -164,7 +164,7 @@ class D_tran(nn.Module):
     # 256
     layer_idx = 1
     name = 'layer%d' % layer_idx
-    main.add_module('%s.conv' % name, nn.Conv2d(nc, nf, 4, 2, 1, bias=False))
+    main.add_module('%s_conv' % name, nn.Conv2d(nc, nf, 4, 2, 1, bias=False))
 
     # 128
     layer_idx += 1
@@ -181,17 +181,17 @@ class D_tran(nn.Module):
     layer_idx += 1
     name = 'layer%d' % layer_idx
     nf = nf * 2
-    main.add_module('%s.leakyrelu' % name, nn.LeakyReLU(0.2, inplace=True))
-    main.add_module('%s.conv' % name, nn.Conv2d(nf, nf*2, 4, 1, 1, bias=False))
-    main.add_module('%s.bn' % name, nn.BatchNorm2d(nf*2))
+    main.add_module('%s_leakyrelu' % name, nn.LeakyReLU(0.2, inplace=True))
+    main.add_module('%s_conv' % name, nn.Conv2d(nf, nf*2, 4, 1, 1, bias=False))
+    main.add_module('%s_bn' % name, nn.BatchNorm2d(nf*2))
 
     # 31
     layer_idx += 1
     name = 'layer%d' % layer_idx
     nf = nf * 2
-    main.add_module('%s.leakyrelu' % name, nn.LeakyReLU(0.2, inplace=True))
-    main.add_module('%s.conv' % name, nn.Conv2d(nf, 1, 4, 1, 1, bias=False))
-    main.add_module('%s.sigmoid' % name , nn.Sigmoid())
+    main.add_module('%s_leakyrelu' % name, nn.LeakyReLU(0.2, inplace=True))
+    main.add_module('%s_conv' % name, nn.Conv2d(nf, 1, 4, 1, 1, bias=False))
+    main.add_module('%s_sigmoid' % name , nn.Sigmoid())
     # 30 (sizePatchGAN=30)
 
     self.main = main
@@ -280,13 +280,13 @@ class G(nn.Module):
     name = 'dlayer%d' % layer_idx
     dlayer1 = nn.Sequential()
     d_inc = nf*2
-    dlayer1.add_module('%s.relu' % name, nn.ReLU(inplace=True))
-    dlayer1.add_module('%s.tconv' % name, nn.ConvTranspose2d(d_inc, 20, 4, 2, 1, bias=False))
+    dlayer1.add_module('%s_relu' % name, nn.ReLU(inplace=True))
+    dlayer1.add_module('%s_tconv' % name, nn.ConvTranspose2d(d_inc, 20, 4, 2, 1, bias=False))
 
     dlayerfinal = nn.Sequential()
 
-    dlayerfinal.add_module('%s.conv' % name, nn.Conv2d(24, output_nc, 3, 1, 1, bias=False))
-    dlayerfinal.add_module('%s.tanh' % name, nn.Tanh())
+    dlayerfinal.add_module('%s_conv' % name, nn.Conv2d(24, output_nc, 3, 1, 1, bias=False))
+    dlayerfinal.add_module('%s_tanh' % name, nn.Tanh())
 
     self.conv1010 = nn.Conv2d(20, 1, kernel_size=1,stride=1,padding=0)  # 1mm
     self.conv1020 = nn.Conv2d(20, 1, kernel_size=1,stride=1,padding=0)  # 1mm
@@ -440,9 +440,9 @@ class G2(nn.Module):
     name = 'dlayer%d' % layer_idx
     dlayer1 = nn.Sequential()
     d_inc = nf*2
-    dlayer1.add_module('%s.relu' % name, nn.ReLU(inplace=True))
-    dlayer1.add_module('%s.tconv' % name, nn.ConvTranspose2d(d_inc, output_nc, 4, 2, 1, bias=False))
-    dlayer1.add_module('%s.tanh' % name, nn.LeakyReLU(0.2, inplace=True))
+    dlayer1.add_module('%s_relu' % name, nn.ReLU(inplace=True))
+    dlayer1.add_module('%s_tconv' % name, nn.ConvTranspose2d(d_inc, output_nc, 4, 2, 1, bias=False))
+    dlayer1.add_module('%s_tanh' % name, nn.LeakyReLU(0.2, inplace=True))
 
     self.layer1 = layer1
     self.layer2 = layer2
