@@ -35,42 +35,170 @@ def deconv_block(in_dim,out_dim):
 def blockUNet1(in_c, out_c, name, transposed=False, bn=False, relu=True, dropout=False):
   block = nn.Sequential()
   if relu:
-    block.add_module('%s.relu' % name, nn.ReLU(inplace=True))
+    block.add_module('%s_relu' % name, nn.ReLU(inplace=True))
   else:
-    block.add_module('%s.leakyrelu' % name, nn.LeakyReLU(0.2, inplace=True))
+    block.add_module('%s_leakyrelu' % name, nn.LeakyReLU(0.2, inplace=True))
   if not transposed:
-    block.add_module('%s.conv' % name, nn.Conv2d(in_c, out_c, 3, 1, 1, bias=False))
+    block.add_module('%s_conv' % name, nn.Conv2d(in_c, out_c, 3, 1, 1, bias=False))
   else:
-    block.add_module('%s.tconv' % name, nn.ConvTranspose2d(in_c, out_c, 3, 1, 1, bias=False))
+    block.add_module('%s_tconv' % name, nn.ConvTranspose2d(in_c, out_c, 3, 1, 1, bias=False))
   if bn:
-    block.add_module('%s.bn' % name, nn.BatchNorm2d(out_c))
+    block.add_module('%s_bn' % name, nn.BatchNorm2d(out_c))
   if dropout:
-    block.add_module('%s.dropout' % name, nn.Dropout2d(0.5, inplace=True))
+    block.add_module('%s_dropout' % name, nn.Dropout2d(0.5, inplace=True))
   return block
 
 def blockUNet(in_c, out_c, name, transposed=False, bn=False, relu=True, dropout=False):
   block = nn.Sequential()
   if relu:
-    block.add_module('%s.relu' % name, nn.ReLU(inplace=True))
+    block.add_module('%s_relu' % name, nn.ReLU(inplace=True))
   else:
-    block.add_module('%s.leakyrelu' % name, nn.LeakyReLU(0.2, inplace=True))
+    block.add_module('%s_leakyrelu' % name, nn.LeakyReLU(0.2, inplace=True))
   if not transposed:
-    block.add_module('%s.conv' % name, nn.Conv2d(in_c, out_c, 4, 2, 1, bias=False))
+    block.add_module('%s_conv' % name, nn.Conv2d(in_c, out_c, 4, 2, 1, bias=False))
   else:
-    block.add_module('%s.tconv' % name, nn.ConvTranspose2d(in_c, out_c, 4, 2, 1, bias=False))
+    block.add_module('%s_tconv' % name, nn.ConvTranspose2d(in_c, out_c, 4, 2, 1, bias=False))
   if bn:
-    block.add_module('%s.bn' % name, nn.BatchNorm2d(out_c))
+    block.add_module('%s_bn' % name, nn.BatchNorm2d(out_c))
   if dropout:
-    block.add_module('%s.dropout' % name, nn.Dropout2d(0.5, inplace=True))
+    block.add_module('%s_dropout' % name, nn.Dropout2d(0.5, inplace=True))
   return block
 
 
+class D1(nn.Module):
+  def __init__(self, nc, ndf, hidden_size):
+    super(D1, self).__init__()
+
+    # 256
+    self.conv1 = nn.Sequential(nn.Conv2d(nc,ndf,kernel_size=3,stride=1,padding=1),
+                               nn.ELU(True))
+    # 256
+    self.conv2 = conv_block(ndf,ndf)
+    # 128
+    self.conv3 = conv_block(ndf, ndf*2)
+    # 64
+    self.conv4 = conv_block(ndf*2, ndf*3)
+    # 32
+    self.encode = nn.Conv2d(ndf*3, hidden_size, kernel_size=1,stride=1,padding=0)
+    self.decode = nn.Conv2d(hidden_size, ndf, kernel_size=1,stride=1,padding=0)
+    # 32
+    self.deconv4 = deconv_block(ndf, ndf)
+    # 64
+    self.deconv3 = deconv_block(ndf, ndf)
+    # 128
+    self.deconv2 = deconv_block(ndf, ndf)
+    # 256
+    self.deconv1 = nn.Sequential(nn.Conv2d(ndf,ndf,kernel_size=3,stride=1,padding=1),
+                                 nn.ELU(True),
+                                 nn.Conv2d(ndf,ndf,kernel_size=3,stride=1,padding=1),
+                                 nn.ELU(True),
+                                 nn.Conv2d(ndf, nc, kernel_size=3, stride=1, padding=1),
+                                 nn.Tanh())
+    """
+    self.deconv1 = nn.Sequential(nn.Conv2d(ndf,nc,kernel_size=3,stride=1,padding=1),
+                                 nn.Tanh())
+    """
+  def forward(self,x):
+    out1 = self.conv1(x)
+    out2 = self.conv2(out1)
+    out3 = self.conv3(out2)
+    out4 = self.conv4(out3)
+    out5 = self.encode(out4)
+    dout5= self.decode(out5)
+    dout4= self.deconv4(dout5)
+    dout3= self.deconv3(dout4)
+    dout2= self.deconv2(dout3)
+    dout1= self.deconv1(dout2)
+    return dout1
+
+class D(nn.Module):
+  def __init__(self, nc, nf):
+    super(D, self).__init__()
+
+    main = nn.Sequential()
+    # 256
+    layer_idx = 1
+    name = 'layer%d' % layer_idx
+    main.add_module('%s_conv' % name, nn.Conv2d(nc, nf, 4, 2, 1, bias=False))
+
+    # 128
+    layer_idx += 1
+    name = 'layer%d' % layer_idx
+    main.add_module(name, blockUNet(nf, nf*2, name, transposed=False, bn=True, relu=False, dropout=False))
+
+    # 64
+    layer_idx += 1
+    name = 'layer%d' % layer_idx
+    nf = nf * 2
+    main.add_module(name, blockUNet(nf, nf*2, name, transposed=False, bn=True, relu=False, dropout=False))
+
+    # 32
+    layer_idx += 1
+    name = 'layer%d' % layer_idx
+    nf = nf * 2
+    main.add_module('%s_leakyrelu' % name, nn.LeakyReLU(0.2, inplace=True))
+    main.add_module('%s_conv' % name, nn.Conv2d(nf, nf*2, 4, 1, 1, bias=False))
+    main.add_module('%s_bn' % name, nn.BatchNorm2d(nf*2))
+
+    # 31
+    layer_idx += 1
+    name = 'layer%d' % layer_idx
+    nf = nf * 2
+    main.add_module('%s_leakyrelu' % name, nn.LeakyReLU(0.2, inplace=True))
+    main.add_module('%s_conv' % name, nn.Conv2d(nf, 1, 4, 1, 1, bias=False))
+    main.add_module('%s_sigmoid' % name , nn.Sigmoid())
+    # 30 (sizePatchGAN=30)
+
+    self.main = main
+
+  def forward(self, x):
+    output = self.main(x)
+    return output
 
 
+class D_tran(nn.Module):
+  def __init__(self, nc, nf):
+    super(D_tran, self).__init__()
 
+    main = nn.Sequential()
+    # 256
+    layer_idx = 1
+    name = 'layer%d' % layer_idx
+    main.add_module('%s_conv' % name, nn.Conv2d(nc, nf, 4, 2, 1, bias=False))
 
+    # 128
+    layer_idx += 1
+    name = 'layer%d' % layer_idx
+    main.add_module(name, blockUNet(nf, nf*2, name, transposed=False, bn=True, relu=False, dropout=False))
 
+    # 64
+    layer_idx += 1
+    name = 'layer%d' % layer_idx
+    nf = nf * 2
+    main.add_module(name, blockUNet(nf, nf*2, name, transposed=False, bn=True, relu=False, dropout=False))
 
+    # 32
+    layer_idx += 1
+    name = 'layer%d' % layer_idx
+    nf = nf * 2
+    main.add_module('%s_leakyrelu' % name, nn.LeakyReLU(0.2, inplace=True))
+    main.add_module('%s_conv' % name, nn.Conv2d(nf, nf*2, 4, 1, 1, bias=False))
+    main.add_module('%s_bn' % name, nn.BatchNorm2d(nf*2))
+
+    # 31
+    layer_idx += 1
+    name = 'layer%d' % layer_idx
+    nf = nf * 2
+    main.add_module('%s_leakyrelu' % name, nn.LeakyReLU(0.2, inplace=True))
+    main.add_module('%s_conv' % name, nn.Conv2d(nf, 1, 4, 1, 1, bias=False))
+    main.add_module('%s_sigmoid' % name , nn.Sigmoid())
+    # 30 (sizePatchGAN=30)
+
+    self.main = main
+
+  def forward(self, x):
+    output = self.main(x)
+    return output
 
 
 
@@ -152,13 +280,13 @@ class G(nn.Module):
     name = 'dlayer%d' % layer_idx
     dlayer1 = nn.Sequential()
     d_inc = nf*2
-    dlayer1.add_module('%s.relu' % name, nn.ReLU(inplace=True))
-    dlayer1.add_module('%s.tconv' % name, nn.ConvTranspose2d(d_inc, 20, 4, 2, 1, bias=False))
+    dlayer1.add_module('%s_relu' % name, nn.ReLU(inplace=True))
+    dlayer1.add_module('%s_tconv' % name, nn.ConvTranspose2d(d_inc, 20, 4, 2, 1, bias=False))
 
     dlayerfinal = nn.Sequential()
 
-    dlayerfinal.add_module('%s.conv' % name, nn.Conv2d(24, output_nc, 3, 1, 1, bias=False))
-    dlayerfinal.add_module('%s.tanh' % name, nn.Tanh())
+    dlayerfinal.add_module('%s_conv' % name, nn.Conv2d(24, output_nc, 3, 1, 1, bias=False))
+    dlayerfinal.add_module('%s_tanh' % name, nn.Tanh())
 
     self.conv1010 = nn.Conv2d(20, 1, kernel_size=1,stride=1,padding=0)  # 1mm
     self.conv1020 = nn.Conv2d(20, 1, kernel_size=1,stride=1,padding=0)  # 1mm
@@ -312,9 +440,9 @@ class G2(nn.Module):
     name = 'dlayer%d' % layer_idx
     dlayer1 = nn.Sequential()
     d_inc = nf*2
-    dlayer1.add_module('%s.relu' % name, nn.ReLU(inplace=True))
-    dlayer1.add_module('%s.tconv' % name, nn.ConvTranspose2d(d_inc, output_nc, 4, 2, 1, bias=False))
-    dlayer1.add_module('%s.tanh' % name, nn.LeakyReLU(0.2, inplace=True))
+    dlayer1.add_module('%s_relu' % name, nn.ReLU(inplace=True))
+    dlayer1.add_module('%s_tconv' % name, nn.ConvTranspose2d(d_inc, output_nc, 4, 2, 1, bias=False))
+    dlayer1.add_module('%s_tanh' % name, nn.LeakyReLU(0.2, inplace=True))
 
     self.layer1 = layer1
     self.layer2 = layer2
