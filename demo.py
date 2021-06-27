@@ -39,25 +39,40 @@ from skimage import measure
 import numpy as np
 
 parser = argparse.ArgumentParser()
-parser.add_argument('--dataset', required=False,
-  default='pix2pix',  help='')
+"""parser.add_argument('--dataset', required=False,
+  default='pix2pix',  help='')"""
+dataset = 'pix2pix'
+
 parser.add_argument('--dataroot', required=False,
-  default='', help='path to trn dataset')
-parser.add_argument('--valDataroot', required=False,
-  default='', help='path to val dataset')
-parser.add_argument('--mode', type=str, default='B2A', help='B2A: facade, A2B: edges2shoes')
-parser.add_argument('--batchSize', type=int, default=1, help='input batch size')
-parser.add_argument('--valBatchSize', type=int, default=1, help='input batch size')
-parser.add_argument('--originalSize', type=int,
-  default=1024, help='the height / width of the original input image')
-parser.add_argument('--imageSize', type=int,
-  default=1024, help='the height / width of the cropped input image to network')
-parser.add_argument('--inputChannelSize', type=int,
-  default=3, help='size of the input channels')
-parser.add_argument('--outputChannelSize', type=int,
-  default=3, help='size of the output channels')
-parser.add_argument('--ngf', type=int, default=64)
-parser.add_argument('--ndf', type=int, default=64)
+  default='./nat_new4', help='path to trn dataset')
+dataroot = './nat_new4'
+
+#parser.add_argument('--valDataroot', required=False,
+#  default='./nat_new4', help='path to val dataset')
+valDataroot = './nat_new4'
+
+#parser.add_argument('--mode', type=str, default='B2A', help='B2A: facade, A2B: edges2shoes')
+mode = 'B2A'
+
+#parser.add_argument('--batchSize', type=int, default=1, help='input batch size')
+batchSize = 1
+
+#parser.add_argument('--valBatchSize', type=int, default=1, help='input batch size')
+valBatchSize = 1
+
+#parser.add_argument('--originalSize', type=int,
+#  default=1024, help='the height / width of the original input image')
+originalSize = 1024
+
+#parser.add_argument('--imageSize', type=int,
+#  default=1024, help='the height / width of the cropped input image to network')
+imageSize = 1024
+
+inputChannelSize=3
+outputChannelSize = 3
+ngf=64
+ndf = 64
+"""
 parser.add_argument('--niter', type=int, default=400, help='number of epochs to train for')
 parser.add_argument('--lrD', type=float, default=0.0002, help='learning rate, default=0.0002')
 parser.add_argument('--lrG', type=float, default=0.0002, help='learning rate, default=0.0002')
@@ -70,47 +85,62 @@ parser.add_argument('--wd', type=float, default=0.0000, help='weight decay in D'
 parser.add_argument('--beta1', type=float, default=0.5, help='beta1 for adam')
 parser.add_argument('--netG', default='', help="path to netG (to continue training)")
 parser.add_argument('--netD', default='', help="path to netD (to continue training)")
-parser.add_argument('--workers', type=int, help='number of data loading workers', default=1)
+parser.add_argument('--workers', type=int, help='number of data loading workers', default=0)
 parser.add_argument('--exp', default='sample', help='folder to output images and model checkpoints')
 parser.add_argument('--display', type=int, default=5, help='interval for displaying train-logs')
 parser.add_argument('--evalIter', type=int, default=500, help='interval for evauating(generating) images from valDataroot')
-opt = parser.parse_args()
-print(opt)
+"""
 
-create_exp_dir(opt.exp)
-opt.manualSeed = random.randint(1, 10000)
+niter=400
+lrD=0.0002
+lrG=0.0002
+annealStart=0
+annealEvery=400
+lambdaGAN=0.01
+lambdaIMG=1
+poolSize=50
+wd=0.0000
+beta1=0.5
+workers=0
+exp='sample'
+display=5
+evalIter=500
+
+
+#create_exp_dir(opt.exp)
+manualSeed = random.randint(1, 10000)
 # opt.manualSeed = 101
-random.seed(opt.manualSeed)
-torch.manual_seed(opt.manualSeed)
-torch.cuda.manual_seed_all(opt.manualSeed)
-print("Random Seed: ", opt.manualSeed)
+#random.seed(opt.manualSeed)
+torch.manual_seed(manualSeed)
+torch.cuda.manual_seed_all(manualSeed)
+print("Random Seed: ", manualSeed)
 
 # get dataloader
-dataloader = getLoader(opt.dataset,
-                       opt.dataroot,
-                       opt.originalSize,
-                       opt.imageSize,
-                       opt.batchSize,
-                       opt.workers,
+dataloader = getLoader(dataset,
+                       dataroot,
+                       originalSize,
+                       imageSize,
+                       batchSize,
+                       workers,
                        mean=(0.5, 0.5, 0.5), std=(0.5, 0.5, 0.5),
                        split='train',
                        shuffle=True,
-                       seed=opt.manualSeed)
-opt.dataset='pix2pix_val'
+                       seed=manualSeed)
+dataset='pix2pix_val'
 
-valDataloader = getLoader(opt.dataset,
-                          opt.valDataroot,
-                          opt.imageSize, #opt.originalSize,
-                          opt.imageSize,
-                          opt.valBatchSize,
-                          opt.workers,
+valDataloader = getLoader(dataset,
+                          valDataroot,
+                          imageSize, #opt.originalSize,
+                          imageSize,
+                          valBatchSize,
+                          workers,
                           mean=(0.5, 0.5, 0.5), std=(0.5, 0.5, 0.5),
                           split='Train',
                           shuffle=False,
-                          seed=opt.manualSeed)
+                          seed=manualSeed)
 
 # get logger
-trainLogger = open('%s/train.log' % opt.exp, 'w')
+trainLogger = open('%s/train.log' % exp, 'w')
 
 def gradient(y):
     gradient_h=torch.abs(y[:, :, :, :-1] - y[:, :, :, 1:])
@@ -119,48 +149,43 @@ def gradient(y):
     return gradient_h, gradient_y
 
 
-ngf = opt.ngf
-ndf = opt.ndf
-inputChannelSize = opt.inputChannelSize
-outputChannelSize= opt.outputChannelSize
 
 
 netG = net.dehaze(inputChannelSize, outputChannelSize, ngf)
+netG.load_state_dict(torch.load('netG.pth'))
 
 
 
-
-if opt.netG != '':
-  netG.load_state_dict(torch.load(opt.netG))
-print(netG)
+#if opt.netG != '':
+#  netG.load_state_dict(torch.load(opt.netG))
+#print(netG)
 
 
 
 netG.train()
 
 
-target= torch.FloatTensor(opt.batchSize, outputChannelSize, opt.imageSize, opt.imageSize)
-input = torch.FloatTensor(opt.batchSize, inputChannelSize, opt.imageSize, opt.imageSize)
+target= torch.FloatTensor(batchSize, outputChannelSize, imageSize,imageSize)
+input = torch.FloatTensor(batchSize, inputChannelSize, imageSize, imageSize)
 
 
 
 
-val_target= torch.FloatTensor(opt.valBatchSize, outputChannelSize, opt.imageSize, opt.imageSize)
-val_input = torch.FloatTensor(opt.valBatchSize, inputChannelSize, opt.imageSize, opt.imageSize)
-label_d = torch.FloatTensor(opt.batchSize)
+val_target= torch.FloatTensor(valBatchSize, outputChannelSize,imageSize, imageSize)
+val_input = torch.FloatTensor(valBatchSize, inputChannelSize, imageSize, imageSize)
+label_d = torch.FloatTensor(batchSize)
 
 
-target = torch.FloatTensor(opt.batchSize, outputChannelSize, opt.imageSize, opt.imageSize)
-input = torch.FloatTensor(opt.batchSize, inputChannelSize, opt.imageSize, opt.imageSize)
-depth = torch.FloatTensor(opt.batchSize, inputChannelSize, opt.imageSize, opt.imageSize)
-ato = torch.FloatTensor(opt.batchSize, inputChannelSize, opt.imageSize, opt.imageSize)
+target = torch.FloatTensor(batchSize, outputChannelSize,  imageSize,  imageSize)
+input = torch.FloatTensor( batchSize, inputChannelSize,  imageSize,  imageSize)
+depth = torch.FloatTensor( batchSize, inputChannelSize,  imageSize,  imageSize)
+ato = torch.FloatTensor( batchSize, inputChannelSize,  imageSize,  imageSize)
 
 
-val_target = torch.FloatTensor(opt.valBatchSize, outputChannelSize, opt.imageSize, opt.imageSize)
-val_input = torch.FloatTensor(opt.valBatchSize, inputChannelSize, opt.imageSize, opt.imageSize)
-val_depth = torch.FloatTensor(opt.valBatchSize, inputChannelSize, opt.imageSize, opt.imageSize)
-val_ato = torch.FloatTensor(opt.valBatchSize, inputChannelSize, opt.imageSize, opt.imageSize)
-
+val_target = torch.FloatTensor( valBatchSize, outputChannelSize,  imageSize,  imageSize)
+val_input = torch.FloatTensor( valBatchSize, inputChannelSize,  imageSize,  imageSize)
+val_depth = torch.FloatTensor( valBatchSize, inputChannelSize,  imageSize,  imageSize)
+val_ato = torch.FloatTensor( valBatchSize, inputChannelSize,  imageSize,  imageSize)
 
 
 
@@ -170,11 +195,9 @@ real_label = 1
 fake_label = 0
 
 # image pool storing previously generated samples from G
-imagePool = ImagePool(opt.poolSize)
+imagePool = ImagePool(poolSize)
 
 # NOTE weight for L_cGAN and L_L1 (i.e. Eq.(4) in the paper)
-lambdaGAN = opt.lambdaGAN
-lambdaIMG = opt.lambdaIMG
 
 netG.cuda()
 
@@ -213,18 +236,18 @@ for epoch in range(1):
   for i, data in enumerate(valDataloader, 0):
     t0 = time.time()
 
-    if opt.mode == 'B2A':
+    if mode == 'B2A':
         input_cpu, target_cpu, depth_cpu, ato_cpu, imgname = data
-    elif opt.mode == 'A2B' :
+    elif mode == 'A2B' :
         input_cpu, target_cpu, depth_cpu, ato_cpu, imgname = data
     batch_size = target_cpu.size(0)
     # print(i)
     target_cpu, input_cpu, depth_cpu, ato_cpu = target_cpu.float().cuda(), input_cpu.float().cuda(), depth_cpu.float().cuda(), ato_cpu.float().cuda()
     # get paired data
-    target.data.resize_as_(target_cpu).copy_(target_cpu)
-    input.data.resize_as_(input_cpu).copy_(input_cpu)
-    depth.data.resize_as_(depth_cpu).copy_(depth_cpu)
-    ato.data.resize_as_(ato_cpu).copy_(ato_cpu)
+    target.resize_as_(target_cpu).copy_(target_cpu)
+    input.resize_as_(input_cpu).copy_(input_cpu)
+    depth.resize_as_(depth_cpu).copy_(depth_cpu)
+    ato.resize_as_(ato_cpu).copy_(ato_cpu)
     #
 
 
@@ -238,7 +261,7 @@ for epoch in range(1):
     directory='./result_cvpr18/image/real_dehazed/'
     if not os.path.exists(directory):
         os.makedirs(directory)
-    for i in range(opt.valBatchSize):
+    for i in range(valBatchSize):
         index=index+1
         print(index)
         zz1=zz[index2,:,:,:]
