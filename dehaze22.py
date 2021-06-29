@@ -16,7 +16,7 @@ import torchvision.models as models
 from torch.autograd import Variable
 
 
-
+#dense block with in  pooling Pyramid module
 def conv_block(in_dim,out_dim):
   return nn.Sequential(nn.Conv2d(in_dim,in_dim,kernel_size=3,stride=1,padding=1),
                        nn.ELU(True),
@@ -24,6 +24,8 @@ def conv_block(in_dim,out_dim):
                        nn.ELU(True),
                        nn.Conv2d(in_dim,out_dim,kernel_size=1,stride=1,padding=0),
                        nn.AvgPool2d(kernel_size=2,stride=2))
+
+#dense block with in  upsampling Pyramid module
 def deconv_block(in_dim,out_dim):
   return nn.Sequential(nn.Conv2d(in_dim,out_dim,kernel_size=3,stride=1,padding=1),
                        nn.ELU(True),
@@ -70,13 +72,17 @@ class D1(nn.Module):
     super(D1, self).__init__()
 
     # 256
+    # 1st conv layer
     self.conv1 = nn.Sequential(nn.Conv2d(nc,ndf,kernel_size=3,stride=1,padding=1),
                                nn.ELU(True))
     # 256
+    # dense block encoder
     self.conv2 = conv_block(ndf,ndf)
     # 128
+    # dense block encoder
     self.conv3 = conv_block(ndf, ndf*2)
     # 64
+    # dense block encoder
     self.conv4 = conv_block(ndf*2, ndf*3)
     # 32
     self.encode = nn.Conv2d(ndf*3, hidden_size, kernel_size=1,stride=1,padding=0)
