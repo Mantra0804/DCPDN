@@ -72,17 +72,14 @@ class D1(nn.Module):
     super(D1, self).__init__()
 
     # 256
-    # 1st conv layer
+    
     self.conv1 = nn.Sequential(nn.Conv2d(nc,ndf,kernel_size=3,stride=1,padding=1),
                                nn.ELU(True))
     # 256
-    # dense block encoder
     self.conv2 = conv_block(ndf,ndf)
     # 128
-    # dense block encoder
     self.conv3 = conv_block(ndf, ndf*2)
     # 64
-    # dense block encoder
     self.conv4 = conv_block(ndf*2, ndf*3)
     # 32
     self.encode = nn.Conv2d(ndf*3, hidden_size, kernel_size=1,stride=1,padding=0)
